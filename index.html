@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finca San Ramón - Control de Ventilación</title>
+<style>
+:root{
+  --bg:#f5f7fb;--card:#fff;--panel:#eef2f7;--text:#172033;--muted:#687386;
+  --border:#d9e0ea;--accent:#2563eb;--accentbg:#eaf1ff;
+  --green:#22c55e;--blue:#0ea5e9;--purple:#8b5cf6;--orange:#f59e0b;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}
+.app{max-width:900px;margin:auto;padding:16px}
+.header,.row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+h1{font-size:23px;margin:0}
+.muted{color:var(--muted);font-size:13px}
+.online{font-size:14px;font-weight:700}
+.online:before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--green);margin-right:7px}
+.demo{display:inline-block;margin-top:7px;padding:5px 9px;border:1px solid var(--border);border-radius:999px;background:#fff7ed;color:#9a3412;font-size:12px;font-weight:700}
+.tabs,.ranges{display:grid;gap:8px}
+.tabs{grid-template-columns:repeat(3,1fr);margin:16px 0}
+.ranges{grid-template-columns:repeat(3,1fr)}
+button,select,input{font:inherit}
+.tab,.range,.btn{min-height:44px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--text);padding:10px;cursor:pointer}
+.tab.active,.range.active,.btn.primary{background:var(--accentbg);border-color:var(--accent)}
+.pane{display:none}.pane.active{display:block}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+.metric{position:relative;min-height:220px;overflow:hidden}
+.content{position:relative;z-index:2}
+.title{font-size:14px;font-weight:700}
+.metrics3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.label{font-size:12px;color:var(--muted)}
+.big{font-size:25px;font-weight:700}
+.huge{font-size:35px;font-weight:700}
+.right{text-align:right}
+.target{font-size:12px;color:var(--muted)}
+.targetv{font-size:20px;font-weight:700;margin-top:4px}
+.dot{display:inline-block;width:13px;height:13px;border-radius:50%;background:var(--green);margin-right:7px}
+.chart{position:absolute;left:8px;right:8px;bottom:8px;width:calc(100% - 16px);height:100px}
+.fullchart{width:100%;height:auto;margin-top:8px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin-bottom:12px}
+.ll{display:inline-block;width:20px;height:3px;border-radius:99px;background:var(--green);margin-right:5px;vertical-align:3px}
+.soft{opacity:.22}
+.dategrid,.settingsgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.dategrid{display:none;margin-top:12px}.dategrid.show{display:grid}
+input[type=time],input[type=date],select{width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;background:#fff;margin-top:5px}
+input[type=range]{width:100%;margin-top:12px}
+.setting{padding:14px 0;border-bottom:1px solid var(--border)}
+.setting:last-child{border-bottom:0}
+.alarm{display:flex;justify-content:space-between;gap:12px;padding:8px 0}
+.progresswrap{display:none;margin-top:12px}.progresswrap.show{display:block}
+.progressbg{height:8px;background:var(--panel);border-radius:99px;overflow:hidden}
+.progress{height:100%;background:var(--green)}
+.test.active{background:var(--accentbg);border-color:var(--accent)}
+.note{font-size:13px;color:var(--muted);margin-top:10px}
+.btnrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.footer{font-size:12px;color:var(--muted);text-align:center;margin:18px 0 4px}
+@media(max-width:680px){
+  .app{padding:12px}.grid2{grid-template-columns:1fr}.settingsgrid,.dategrid{grid-template-columns:1fr}
+  .big{font-size:22px}.huge{font-size:30px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <h1>Finca San Ramón</h1>
+      <div id="subtitle" class="muted">Última actualización: modo DEMO</div>
+      <span class="demo">DEMO · controlador no conectado</span>
+    </div>
+    <div class="online">Demo online</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="status">Status</button>
+    <button class="tab" data-tab="historial">Historial</button>
+    <button class="tab" data-tab="ajustes">Ajustes</button>
+  </div>
+
+  <section id="status" class="pane active">
+    <div class="legend">
+      <span><span class="ll"></span>Hoy</span>
+      <span><span class="ll soft"></span>Hace 24 h</span>
+      <span>│ corte = hora actual</span>
+    </div>
+
+    <div class="grid2">
+      <div class="card metric">
+        <div class="content">
+          <div class="title">Exterior</div>
+          <div class="metrics3">
+            <div><div class="label">RH</div><div class="big">76%</div></div>
+            <div><div class="label">Temp</div><div class="big">20.4°C</div></div>
+            <div><div class="label">DP</div><div class="big">16.1°C</div></div>
+          </div>
+        </div>
+        <svg class="chart" viewBox="0 0 360 115" preserveAspectRatio="none">
+          <path d="M12,68 C42,64 65,57 92,50 S135,39 160,35 S171,37 176,40" fill="none" stroke="var(--blue)" stroke-width="3.2"/>
+          <path d="M176,40 C200,43 223,51 248,59 S293,69 319,64 S339,55 348,52" fill="none" stroke="var(--blue)" stroke-width="3" opacity=".20"/>
+          <line x1="176" y1="14" x2="176" y2="87" stroke="var(--muted)" stroke-dasharray="3 4" opacity=".55"/>
+          <circle cx="176" cy="40" r="4" fill="var(--blue)"/>
+          <line x1="12" y1="87" x2="348" y2="87" stroke="var(--border)"/>
+          <g font-size="9" fill="var(--muted)" text-anchor="middle"><text x="12" y="105">00</text><text x="96" y="105">06</text><text x="180" y="105">12</text><text x="264" y="105">18</text><text x="348" y="105">24</text></g>
+        </svg>
+      </div>
+
+      <div class="card metric">
+        <div class="content">
+          <div class="title">Dentro de la casa</div>
+          <div class="metrics3">
+            <div><div class="label">RH</div><div class="big">91%</div></div>
+            <div><div class="label">Temp</div><div class="big">23.8°C</div></div>
+            <div><div class="label">DP</div><div class="big">22.3°C</div></div>
+          </div>
+        </div>
+        <svg class="chart" viewBox="0 0 360 115" preserveAspectRatio="none">
+          <line x1="12" y1="72" x2="348" y2="72" stroke="var(--orange)" stroke-width="1.6" stroke-dasharray="6 5"/>
+          <text x="18" y="68" font-size="8" fill="var(--muted)">60% RH</text>
+          <path d="M12,26 C42,28 65,33 92,39 S137,47 162,58 S173,62 176,61" fill="none" stroke="var(--purple)" stroke-width="3.2"/>
+          <path d="M176,61 C200,56 220,51 244,47 S286,40 312,46 S336,53 348,57" fill="none" stroke="var(--purple)" stroke-width="3" opacity=".20"/>
+          <line x1="176" y1="14" x2="176" y2="87" stroke="var(--muted)" stroke-dasharray="3 4" opacity=".55"/>
+          <circle cx="176" cy="61" r="4" fill="var(--purple)"/>
+          <line x1="12" y1="87" x2="348" y2="87" stroke="var(--border)"/>
+          <g font-size="9" fill="var(--muted)" text-anchor="middle"><text x="12" y="105">00</text><text x="96" y="105">06</text><text x="180" y="105">12</text><text x="264" y="105">18</text><text x="348" y="105">24</text></g>
+        </svg>
+      </div>
+
+      <div class="card metric">
+        <div class="content row">
+          <div><div class="title">Batería</div><div class="huge" style="margin-top:8px">26.4 V</div><div>🔋 Ventilación permitida</div></div>
+          <div class="right"><div class="target">TARGET</div><div class="targetv">≥25.2 V</div></div>
+        </div>
+        <svg class="chart" viewBox="0 0 360 115" preserveAspectRatio="none">
+          <line x1="12" y1="67" x2="348" y2="67" stroke="var(--orange)" stroke-width="1.8" stroke-dasharray="6 5"/>
+          <text x="20" y="62" font-size="8" fill="var(--muted)">25.2 V</text>
+          <path d="M12,75 C42,74 65,71 92,65 S135,52 157,39 S170,33 176,31" fill="none" stroke="var(--green)" stroke-width="3.2"/>
+          <path d="M176,31 C201,28 225,31 250,38 S290,50 316,58 S339,64 348,66" fill="none" stroke="var(--green)" stroke-width="3" opacity=".20"/>
+          <line x1="176" y1="14" x2="176" y2="87" stroke="var(--muted)" stroke-dasharray="3 4" opacity=".55"/>
+          <circle cx="176" cy="31" r="4" fill="var(--green)"/>
+          <line x1="12" y1="87" x2="348" y2="87" stroke="var(--border)"/>
+          <g font-size="9" fill="var(--muted)" text-anchor="middle"><text x="12" y="105">00</text><text x="96" y="105">06</text><text x="180" y="105">12</text><text x="264" y="105">18</text><text x="348" y="105">24</text></g>
+        </svg>
+      </div>
+
+      <div class="card metric">
+        <div class="content row">
+          <div><div class="title">Ventilación</div><div class="big" style="margin-top:8px"><span class="dot"></span>ON</div></div>
+          <div class="right"><div class="target">ACUMULADO HOY</div><div class="targetv">4 h 38 min</div></div>
+        </div>
+        <svg class="chart" viewBox="0 0 360 115" preserveAspectRatio="none">
+          <text x="4" y="32" font-size="8" fill="var(--muted)">ON</text><text x="4" y="79" font-size="8" fill="var(--muted)">OFF</text>
+          <path d="M18,76 L58,76 L58,29 L91,29 L91,76 L118,76 L118,29 L146,29 L146,76 L157,76 L157,29 L176,29" fill="none" stroke="var(--orange)" stroke-width="4"/>
+          <path d="M176,29 L196,29 L196,76 L226,76 L226,29 L264,29 L264,76 L304,76 L304,29 L326,29 L326,76 L348,76" fill="none" stroke="var(--orange)" stroke-width="4" opacity=".18"/>
+          <line x1="176" y1="14" x2="176" y2="87" stroke="var(--muted)" stroke-dasharray="3 4" opacity=".55"/>
+          <line x1="18" y1="87" x2="348" y2="87" stroke="var(--border)"/>
+          <g font-size="9" fill="var(--muted)" text-anchor="middle"><text x="18" y="105">00</text><text x="100" y="105">06</text><text x="183" y="105">12</text><text x="265" y="105">18</text><text x="348" y="105">24</text></g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="row">
+        <div><div class="title">Condición de ventilación — ΔTd</div><div class="big" style="margin-top:6px">6.2 °C</div><div>🟢 Óptima</div></div>
+        <div class="right"><div class="target">TARGET</div><div class="targetv">≥2.0 °C</div></div>
+      </div>
+      <svg class="fullchart" viewBox="0 0 700 195">
+        <line x1="48" y1="155" x2="680" y2="155" stroke="var(--border)"/>
+        <line x1="48" y1="114" x2="680" y2="114" stroke="var(--orange)" stroke-width="2" stroke-dasharray="8 6"/>
+        <text x="55" y="106" font-size="11" fill="var(--muted)">Target 2.0 °C</text>
+        <path d="M48,143 C83,140 110,133 145,124 S190,111 230,96 S285,78 330,69 S352,65 358,62" fill="none" stroke="var(--green)" stroke-width="4"/>
+        <path d="M358,62 C397,66 431,79 468,88 S525,80 560,64 S623,55 680,69" fill="none" stroke="var(--green)" stroke-width="4" opacity=".18"/>
+        <line x1="358" y1="20" x2="358" y2="155" stroke="var(--muted)" stroke-dasharray="4 5" opacity=".55"/>
+        <circle cx="358" cy="62" r="5" fill="var(--green)"/>
+        <g font-size="11" fill="var(--muted)" text-anchor="middle"><text x="48" y="180">00</text><text x="206" y="180">06</text><text x="364" y="180">12</text><text x="522" y="180">18</text><text x="680" y="180">24</text></g>
+      </svg>
+      <div class="note">La línea de 60% RH es solo referencia visual. La parte tenue muestra, desde la hora actual hasta las 24:00, lo ocurrido exactamente 24 horas antes.</div>
+    </div>
+  </section>
+
+  <section id="historial" class="pane">
+    <div class="card">
+      <div class="title" style="margin-bottom:10px">Rango</div>
+      <div class="ranges">
+        <button class="range active" data-range="week">Semana</button>
+        <button class="range" data-range="month">30 días</button>
+        <button class="range" data-range="custom">Personalizado</button>
+      </div>
+      <div id="customDates" class="dategrid">
+        <label>Desde<input type="date"></label>
+        <label>Hasta<input type="date"></label>
+      </div>
+      <div id="rangeLabel" class="note">Últimos 7 días</div>
+    </div>
+
+    <div class="grid2" style="margin-top:12px">
+      <div class="card metric">
+        <div class="content"><div class="title">Exterior</div><div class="metrics3">
+          <div><div class="label">RH prom.</div><div class="big">82%</div></div>
+          <div><div class="label">Temp prom.</div><div class="big">19.8°C</div></div>
+          <div><div class="label">DP prom.</div><div class="big">16.6°C</div></div>
+        </div></div>
+        <svg class="chart" viewBox="0 0 360 115"><path d="M15,62 C45,55 68,49 98,58 S143,70 176,49 S222,35 258,46 S307,64 346,51" fill="none" stroke="var(--blue)" stroke-width="3"/><line x1="15" y1="87" x2="346" y2="87" stroke="var(--border)"/><g class="histAxis" font-size="9" fill="var(--muted)" text-anchor="middle"><text x="18" y="105">Lun</text><text x="72" y="105">Mar</text><text x="126" y="105">Mié</text><text x="180" y="105">Jue</text><text x="234" y="105">Vie</text><text x="288" y="105">Sáb</text><text x="342" y="105">Dom</text></g></svg>
+      </div>
+
+      <div class="card metric">
+        <div class="content"><div class="title">Dentro de la casa</div><div class="metrics3">
+          <div><div class="label">RH prom.</div><div class="big">88%</div></div>
+          <div><div class="label">Temp prom.</div><div class="big">23.1°C</div></div>
+          <div><div class="label">DP prom.</div><div class="big">21.0°C</div></div>
+        </div></div>
+        <svg class="chart" viewBox="0 0 360 115"><line x1="15" y1="72" x2="346" y2="72" stroke="var(--orange)" stroke-dasharray="6 5"/><text x="20" y="68" font-size="8" fill="var(--muted)">60% RH</text><path d="M15,28 C48,35 70,42 102,47 S148,59 180,52 S225,46 258,54 S310,65 346,57" fill="none" stroke="var(--purple)" stroke-width="3"/><line x1="15" y1="87" x2="346" y2="87" stroke="var(--border)"/><g class="histAxis" font-size="9" fill="var(--muted)" text-anchor="middle"><text x="18" y="105">Lun</text><text x="72" y="105">Mar</text><text x="126" y="105">Mié</text><text x="180" y="105">Jue</text><text x="234" y="105">Vie</text><text x="288" y="105">Sáb</text><text x="342" y="105">Dom</text></g></svg>
+      </div>
+
+      <div class="card metric">
+        <div class="content row">
+          <div><div class="title">Batería</div><div class="label" style="margin-top:8px">Promedio</div><div class="big">26.0 V</div><div class="note">Mín. 24.9 · Máx. 28.1 V</div></div>
+          <div class="right"><div class="target">TARGET</div><div class="targetv">≥25.2 V</div></div>
+        </div>
+        <svg class="chart" viewBox="0 0 360 115"><line x1="15" y1="66" x2="346" y2="66" stroke="var(--orange)" stroke-dasharray="6 5"/><path d="M15,69 C45,65 72,49 101,42 S145,33 180,45 S224,61 258,50 S305,40 346,57" fill="none" stroke="var(--green)" stroke-width="3"/><line x1="15" y1="87" x2="346" y2="87" stroke="var(--border)"/><g class="histAxis" font-size="9" fill="var(--muted)" text-anchor="middle"><text x="18" y="105">Lun</text><text x="72" y="105">Mar</text><text x="126" y="105">Mié</text><text x="180" y="105">Jue</text><text x="234" y="105">Vie</text><text x="288" y="105">Sáb</text><text x="342" y="105">Dom</text></g></svg>
+      </div>
+
+      <div class="card metric">
+        <div class="content row">
+          <div><div class="title">Ventilación</div><div class="big" style="margin-top:8px">ON/OFF</div></div>
+          <div class="right"><div class="target">ACUMULADO</div><div id="ventTotal" class="targetv">31 h 42 min</div></div>
+        </div>
+        <svg class="chart" viewBox="0 0 360 115"><text x="4" y="30" font-size="8" fill="var(--muted)">ON</text><text x="4" y="78" font-size="8" fill="var(--muted)">OFF</text><path d="M18,76 L40,76 L40,28 L68,28 L68,76 L92,76 L92,28 L130,28 L130,76 L155,76 L155,28 L188,28 L188,76 L222,76 L222,28 L252,28 L252,76 L278,76 L278,28 L315,28 L315,76 L346,76" fill="none" stroke="var(--orange)" stroke-width="4"/><line x1="18" y1="87" x2="346" y2="87" stroke="var(--border)"/><g class="histAxis" font-size="9" fill="var(--muted)" text-anchor="middle"><text x="18" y="105">Lun</text><text x="72" y="105">Mar</text><text x="126" y="105">Mié</text><text x="180" y="105">Jue</text><text x="234" y="105">Vie</text><text x="288" y="105">Sáb</text><text x="342" y="105">Dom</text></g></svg>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="row">
+        <div><div class="title">Condición de ventilación — ΔTd</div><div class="label" style="margin-top:8px">Promedio del período</div><div id="deltaAvg" class="big">4.7 °C</div></div>
+        <div class="right"><div class="target">TARGET</div><div class="targetv">≥2.0 °C</div></div>
+      </div>
+      <svg class="fullchart" viewBox="0 0 700 190"><line x1="48" y1="150" x2="680" y2="150" stroke="var(--border)"/><line x1="48" y1="115" x2="680" y2="115" stroke="var(--orange)" stroke-dasharray="8 6"/><path d="M48,130 C102,118 145,90 205,102 S300,63 365,80 S450,106 520,73 S612,60 680,88" fill="none" stroke="var(--green)" stroke-width="4"/><g id="deltaAxis" font-size="11" fill="var(--muted)" text-anchor="middle"><text x="50" y="176">Lun</text><text x="155" y="176">Mar</text><text x="260" y="176">Mié</text><text x="365" y="176">Jue</text><text x="470" y="176">Vie</text><text x="575" y="176">Sáb</text><text x="675" y="176">Dom</text></g></svg>
+    </div>
+  </section>
+
+  <section id="ajustes" class="pane">
+    <div class="card">
+      <div class="row">
+        <div><div class="title">Modo de operación</div><div class="muted">Funcionamiento normal del sistema.</div></div>
+        <div style="min-width:120px"><select id="mode"><option>AUTO</option><option>OFF</option></select></div>
+      </div>
+    </div>
+
+    <div id="testCard" class="card test" style="margin-top:12px">
+      <div class="row">
+        <div><div class="title">Prueba manual de ventilación</div><div class="muted" style="margin-top:4px">Enciende ambos ventiladores durante un máximo de 1 minuto.</div></div>
+        <div class="right"><div class="target">MÁX.</div><div class="targetv">1 min</div></div>
+      </div>
+      <div class="note">En la versión DEMO esta prueba solo simula el conteo. Cuando exista el ESP32, ignorará horario, RH y ΔTd, pero mantendrá la protección de batería.</div>
+      <div class="btnrow">
+        <button id="testStart" class="btn primary">▶ Probar 1 minuto</button>
+        <button id="testStop" class="btn" disabled>■ Detener</button>
+        <span id="testStatus" class="muted">Lista para prueba</span>
+      </div>
+      <div id="countArea" class="progresswrap">
+        <div class="row"><span>Ventilación ON</span><strong id="countdown">1:00</strong></div>
+        <div class="progressbg"><div id="progress" class="progress" style="width:100%"></div></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="title">Horario</div>
+      <div class="settingsgrid" style="margin-top:10px">
+        <label>Inicio<input id="startTime" type="time" value="08:00"></label>
+        <label>Final<input id="endTime" type="time" value="16:30"></label>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="title">Humedad interior</div>
+      <div class="setting"><div class="row"><span>RH para permitir arranque</span><strong id="rhOnVal">75%</strong></div><input id="rhOn" type="range" min="60" max="95" value="75"></div>
+      <div class="setting row"><div><div>Referencia saludable</div><div class="muted">Solo referencia gráfica</div></div><strong>60%</strong></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="title">Ventaja del aire exterior — ΔTd</div>
+      <div class="setting"><div class="row"><span>Target para encender</span><strong id="deltaOnVal">2.0°C</strong></div><input id="deltaOn" type="range" min="0.5" max="6" step="0.5" value="2"></div>
+      <div class="setting"><div class="row"><span>Apagar cuando baje de</span><strong id="deltaOffVal">0.8°C</strong></div><input id="deltaOff" type="range" min="0" max="5" step="0.1" value="0.8"></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="title">Protección de batería</div>
+      <div class="setting"><div class="row"><span>Voltaje mínimo para arrancar</span><strong id="batOnVal">25.2 V</strong></div><input id="batOn" type="range" min="23" max="28" step="0.1" value="25.2"></div>
+      <div class="setting"><div class="row"><span>Corte por batería baja</span><strong id="batOffVal">24.8 V</strong></div><input id="batOff" type="range" min="22.5" max="27" step="0.1" value="24.8"></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="title">Protección contra ciclos rápidos</div>
+      <div class="settingsgrid" style="margin-top:10px">
+        <label>Mínimo ON<select><option>5 min</option><option selected>10 min</option><option>15 min</option></select></label>
+        <label>Mínimo OFF<select><option selected>5 min</option><option>10 min</option><option>15 min</option></select></label>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="title">Alarmas</div>
+      <label class="alarm"><span>RH interior &gt;95% durante 30 min</span><input type="checkbox" checked></label>
+      <label class="alarm"><span>Batería &lt;24.5 V</span><input type="checkbox" checked></label>
+      <label class="alarm"><span>Sin comunicación durante 30 min</span><input type="checkbox" checked></label>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="row">
+        <div><div class="title">Guardar configuración</div><div class="muted">En DEMO no se envía nada a la finca.</div></div>
+        <button id="save" class="btn primary">Guardar cambios</button>
+      </div>
+      <div id="validation" class="note"></div>
+    </div>
+  </section>
+
+  <div class="footer">Versión DEMO · datos ilustrativos · sin controlador conectado</div>
+</div>
+
+<script>
+(function(){
+  const tabs=[...document.querySelectorAll('.tab')];
+  const panes=[...document.querySelectorAll('.pane')];
+  const subtitle=document.getElementById('subtitle');
+  const subtitles={
+    status:'Última actualización: modo DEMO',
+    historial:'Historial de operación · datos simulados',
+    ajustes:'Configuración remota · modo DEMO'
+  };
+  tabs.forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      tabs.forEach(x=>x.classList.toggle('active',x===btn));
+      panes.forEach(p=>p.classList.toggle('active',p.id===btn.dataset.tab));
+      subtitle.textContent=subtitles[btn.dataset.tab];
+    });
+  });
+
+  const rangeBtns=[...document.querySelectorAll('.range')];
+  const customDates=document.getElementById('customDates');
+  const rangeLabel=document.getElementById('rangeLabel');
+  const ventTotal=document.getElementById('ventTotal');
+  const deltaAvg=document.getElementById('deltaAvg');
+  const sets={
+    week:{label:'Últimos 7 días',axis:['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'],vent:'31 h 42 min',delta:'4.7 °C'},
+    month:{label:'Últimos 30 días',axis:['1','5','10','15','20','25','30'],vent:'128 h 15 min',delta:'4.1 °C'},
+    custom:{label:'Rango personalizado',axis:['Inicio','','','','','','Fin'],vent:'—',delta:'—'}
+  };
+  function applyRange(key){
+    const s=sets[key];
+    rangeLabel.textContent=s.label;
+    ventTotal.textContent=s.vent;
+    deltaAvg.textContent=s.delta;
+    customDates.classList.toggle('show',key==='custom');
+    document.querySelectorAll('.histAxis').forEach(g=>{
+      [...g.querySelectorAll('text')].forEach((t,i)=>t.textContent=s.axis[i]||'');
+    });
+    [...document.querySelectorAll('#deltaAxis text')].forEach((t,i)=>t.textContent=s.axis[i]||'');
+  }
+  rangeBtns.forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      rangeBtns.forEach(x=>x.classList.toggle('active',x===btn));
+      applyRange(btn.dataset.range);
+    });
+  });
+
+  function bindRange(id,out,fmt){
+    const e=document.getElementById(id),o=document.getElementById(out);
+    const update=()=>o.textContent=fmt(Number(e.value));
+    e.addEventListener('input',update); update();
+  }
+  bindRange('rhOn','rhOnVal',v=>Math.round(v)+'%');
+  bindRange('deltaOn','deltaOnVal',v=>v.toFixed(1)+'°C');
+  bindRange('deltaOff','deltaOffVal',v=>v.toFixed(1)+'°C');
+  bindRange('batOn','batOnVal',v=>v.toFixed(1)+' V');
+  bindRange('batOff','batOffVal',v=>v.toFixed(1)+' V');
+
+  let timer=null,remaining=60;
+  const testStart=document.getElementById('testStart');
+  const testStop=document.getElementById('testStop');
+  const testStatus=document.getElementById('testStatus');
+  const countArea=document.getElementById('countArea');
+  const countdown=document.getElementById('countdown');
+  const progress=document.getElementById('progress');
+  const testCard=document.getElementById('testCard');
+
+  function renderTest(){
+    countdown.textContent=Math.floor(remaining/60)+':'+String(remaining%60).padStart(2,'0');
+    progress.style.width=(remaining/60*100)+'%';
+  }
+  function finishTest(manual){
+    if(timer){clearInterval(timer);timer=null;}
+    remaining=60;
+    testStart.disabled=false;
+    testStop.disabled=true;
+    countArea.classList.remove('show');
+    testCard.classList.remove('active');
+    testStatus.textContent=manual?'Prueba detenida':'✓ Prueba DEMO finalizada.';
+  }
+  testStart.addEventListener('click',()=>{
+    if(timer)return;
+    remaining=60;
+    testStart.disabled=true;
+    testStop.disabled=false;
+    countArea.classList.add('show');
+    testCard.classList.add('active');
+    testStatus.textContent='● PRUEBA DEMO ACTIVA';
+    renderTest();
+    timer=setInterval(()=>{
+      remaining--;
+      renderTest();
+      if(remaining<=0)finishTest(false);
+    },1000);
+  });
+  testStop.addEventListener('click',()=>finishTest(true));
+
+  document.getElementById('save').addEventListener('click',()=>{
+    const st=document.getElementById('startTime').value;
+    const en=document.getElementById('endTime').value;
+    const dOn=Number(document.getElementById('deltaOn').value);
+    const dOff=Number(document.getElementById('deltaOff').value);
+    const bOn=Number(document.getElementById('batOn').value);
+    const bOff=Number(document.getElementById('batOff').value);
+    const errors=[];
+    if(!st||!en||st>=en)errors.push('Revise el horario.');
+    if(dOff>=dOn)errors.push('ΔTd OFF debe ser menor que ΔTd ON.');
+    if(bOff>=bOn)errors.push('El corte de batería debe ser menor que el arranque.');
+    document.getElementById('validation').textContent =
+      errors.length ? errors.join(' ') : '✓ Configuración válida. En modo DEMO no se envía al controlador.';
+  });
+
+  applyRange('week');
+})();
+</script>
+</body>
+</html>
